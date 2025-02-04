@@ -44,6 +44,10 @@ func TestReceiptProcessor(t *testing.T) {
 		//   = 28 points
 		expected := 28
 		// get the id
+		isValid := receiptprocessor.ValidateReceipt(receipt1)
+		if !isValid {
+			t.Errorf("expected valid receipt, got invalid")
+		}
 		id := receiptprocessor.ProcessReceipt(receipt1)
 		// pause for a moment to allow the kv store to update
 		time.Sleep(1 * time.Second)
@@ -74,6 +78,10 @@ func TestReceiptProcessor(t *testing.T) {
 		//   = 109 points
 		expected := 109
 		// get the id
+		isValid := receiptprocessor.ValidateReceipt(receipt2)
+		if !isValid {
+			t.Errorf("expected valid receipt, got invalid")
+		}
 		id := receiptprocessor.ProcessReceipt(receipt2)
 		// pause for a moment to allow the kv store to update
 		time.Sleep(1 * time.Second)
@@ -88,6 +96,20 @@ func TestReceiptProcessor(t *testing.T) {
 		}
 		if points != expected {
 			t.Errorf("expected %d, got %d", expected, points)
+		}
+	})
+
+	t.Run("ValidateReceipt", func(t *testing.T) {
+		// test an invalid receipt
+		var invalidReceipt = &pb.Receipt{}
+		err = protojson.Unmarshal([]byte(`{"retailer":"","purchaseDate":"not A Date","purchaseTime":"words","items":[{"shortDescription":"","price":"FREE!"},{"shortDescription":"Gatorade","price":"2.25"},{"shortDescription":"Gatorade","price":"2.25"},{"shortDescription":"Gatorade","price":"2.25"}],"total":"9.00"  }`), invalidReceipt)
+
+		if err != nil {
+			t.Fatalf("could not unmarshal invalidReceipt: %v", err)
+		}
+		isValid := receiptprocessor.ValidateReceipt(invalidReceipt)
+		if isValid {
+			t.Errorf("expected invalid receipt, got valid")
 		}
 	})
 }

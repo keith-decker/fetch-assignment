@@ -18,17 +18,11 @@ func home(w http.ResponseWriter, r *http.Request) {
 }
 
 func getPoints(w http.ResponseWriter, r *http.Request) {
-	kv := kvstore.New()
-	pointsString, err := kv.Get(fmt.Sprintf("receipt-%s", r.PathValue("id")))
+	receiptId := r.PathValue("id")
+	points, err := getPointsFromStore(receiptId)
+
 	if err != nil {
 		http.Error(w, "No receipt found for that ID.", http.StatusNotFound)
-		return
-	}
-
-	points, err := strconv.Atoi(pointsString)
-	if err != nil {
-		log.Print(err)
-		http.Error(w, "The points are invalid.", http.StatusInternalServerError)
 		return
 	}
 
@@ -37,6 +31,10 @@ func getPoints(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response, err := protojson.Marshal(getResponse)
+	if err != nil {
+		http.Error(w, "An error occurred while processing the request.", http.StatusInternalServerError)
+		return
+	}
 	w.Write(response)
 }
 
@@ -72,6 +70,11 @@ func processReceipt(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// pass the receipt to the processor, return the ID
+	if !receiptprocessor.ValidateReceipt(receipt) {
+		http.Error(w, "The receipt is invalid.", http.StatusBadRequest)
+		return
+	}
+
 	id := receiptprocessor.ProcessReceipt(receipt)
 
 	processResponse := &pb.ProcessReceiptResponse{
@@ -79,6 +82,10 @@ func processReceipt(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response, err := protojson.Marshal(processResponse)
+	if err != nil {
+		http.Error(w, "An error occurred while processing the request.", http.StatusInternalServerError)
+		return
+	}
 	w.Write(response)
 }
 
@@ -97,4 +104,19 @@ func buildRouter() http.Handler {
 	mux.HandleFunc("/receipts/{id}/points", getPoints)
 	mux.HandleFunc("/receipts/process", processReceipt)
 	return mux
+}
+
+func getPointsFromStore(id string) (int, error) {
+	kv := kvstore.New()
+	pointsString, err := kv.Get(fmt.Sprintf("receipt-%s", id))
+	if err != nil {
+		return -1, err
+	}
+
+	points, err := strconv.Atoi(pointsString)
+	if err != nil {
+		return -1, err
+	}
+
+	return points, nil
 }

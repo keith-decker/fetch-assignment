@@ -3,6 +3,7 @@ package receiptprocessor
 import (
 	"fmt"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -40,9 +41,83 @@ func ProcessReceipt(receipt *pb.Receipt) string {
 	// set the score to -1 to indicate that the receipt is being processed
 	kv.Set(fmt.Sprintf("receipt-%s", id), "-1")
 
-	go processReceipt(id, receipt)
+	processReceipt(id, receipt)
 
 	return id
+}
+
+// dirty. I would refactor this to be more testable and extensible. I would also move the validation to a separate functions.
+func ValidateReceipt(receipt *pb.Receipt) bool {
+	errors := []string{}
+	// check retailer against regex "^[\\w\\s\\-&]+$"
+	matched, err := regexp.MatchString("^[\\w\\s\\-&]+$", receipt.Retailer)
+	if err != nil {
+		fmt.Printf("Error validating retailer regex: %v\n", err)
+		errors = append(errors, fmt.Sprintf("Error validating retailer: %v", receipt.Retailer))
+	}
+	if !matched {
+		errors = append(errors, fmt.Sprintf("Retailer name is invalid: %v", receipt.Retailer))
+	}
+	// check purchase date against regex "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+	matched, err = regexp.MatchString("^[0-9]{4}-[0-9]{2}-[0-9]{2}$", receipt.PurchaseDate)
+	if err != nil {
+		fmt.Printf("Error validating purchase date regex: %v\n", err)
+		errors = append(errors, fmt.Sprintf("Error validating purchase date %v", receipt.PurchaseDate))
+	}
+	if !matched {
+		errors = append(errors, fmt.Sprintf("Purchase date is invalid %v", receipt.PurchaseDate))
+	}
+	// check purchase time against regex "^[0-9]{2}:[0-9]{2}$"
+	matched, err = regexp.MatchString("^[0-9]{2}:[0-9]{2}$", receipt.PurchaseTime)
+	if err != nil {
+		fmt.Printf("Error validating purchase time regex: %v\n", err)
+		errors = append(errors, fmt.Sprintf("Error validating purchase time: %v", receipt.PurchaseTime))
+	}
+	if !matched {
+		errors = append(errors, fmt.Sprintf("Purchase time is invalid: %v", receipt.PurchaseTime))
+	}
+	// check total against regex "^\\d+\\.\\d{2}$"
+	matched, err = regexp.MatchString("^\\d+\\.\\d{2}$", receipt.Total)
+	if err != nil {
+		fmt.Printf("Error validating total regex: %v\n", err)
+		errors = append(errors, fmt.Sprintf("Error validating total: %v", receipt.Total))
+	}
+	if !matched {
+		errors = append(errors, fmt.Sprintf("Total is invalid: %v", receipt.Total))
+	}
+	// check items
+	shortDescRegex, err := regexp.Compile(`^[\w\s\-]+$`)
+	if err != nil {
+		fmt.Printf("Error compiling short description regex: %v\n", err)
+		errors = append(errors, "Error compiling short description regex")
+	}
+	priceRegex, err := regexp.Compile(`^\d+\.\d{2}$`)
+	if err != nil {
+		fmt.Printf("Error compiling price regex: %v\n", err)
+		errors = append(errors, "Error compiling price regex")
+	}
+
+	if len(receipt.Items) == 0 {
+		errors = append(errors, "No items on receipt")
+	}
+
+	for _, item := range receipt.Items {
+		// check short description against regex "^[\\w\\s\\-]+$"
+		matched = shortDescRegex.MatchString(item.ShortDescription)
+		if !matched {
+			errors = append(errors, fmt.Sprintf("Item short description is invalid: %v", item.ShortDescription))
+		}
+		// check price against regex "^[\\w\\s\\-]+$"
+		matched = priceRegex.MatchString(item.Price)
+		if !matched {
+			errors = append(errors, fmt.Sprintf("Item price is invalid: %v", item.Price))
+		}
+	}
+	if len(errors) > 0 {
+		fmt.Printf("Receipt is invalid: %v\n", errors)
+		return false
+	}
+	return true
 }
 
 func processReceipt(id string, receipt *pb.Receipt) {
@@ -187,6 +262,5 @@ var rule7 = newPointRule(func(receipt *pb.Receipt) int {
 })
 
 func defaultRules() []pointRuleInterface {
-	// return []pointRuleInterface{rule1}
 	return []pointRuleInterface{rule1, rule2, rule3, rule4, rule5, rule6, rule7}
 }
