@@ -1,7 +1,13 @@
 package kvstore
 
 import (
+	"errors"
 	"sync"
+)
+
+var (
+	instance *KVStore
+	once     sync.Once
 )
 
 // KVStore is a simple key-value store.
@@ -11,16 +17,22 @@ type KVStore struct {
 }
 
 func New() *KVStore {
-	return &KVStore{
-		store: make(map[string]string),
-	}
+	once.Do(func() {
+		instance = &KVStore{
+			store: make(map[string]string),
+		}
+	})
+	return instance
 }
 
-func (kv *KVStore) Get(key string) (string, bool) {
+func (kv *KVStore) Get(key string) (string, error) {
 	kv.mu.RLock()
 	defer kv.mu.RUnlock()
 	val, ok := kv.store[key]
-	return val, ok
+	if !ok {
+		return "", errors.New("key not found")
+	}
+	return val, nil
 }
 
 func (kv *KVStore) Set(key, val string) {

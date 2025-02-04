@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package pb;
+option go_package = "/pb";
+
+message Receipt {
+    string retailer = 1;
+    string purchaseDate = 2;
+    string purchaseTime = 3;
+    repeated Item items = 4;
+    string total = 5;
+}
+
+message Item {
+    string shortDescription = 1;
+    string price = 2;
+}
+
+message ProcessReceiptRequest {
+    Receipt receipt = 1;
+}
+
+message ProcessReceiptResponse {
+    string id = 1;
+}
+
+message GetPointsRequest {
+    string id = 1;
+}
+
+message GetPointsResponse {
+    int32 points = 1; // TODO: Protojson seems to return int64 as a string. Need to investigate.
+}
+
+message ErrorResponse {
+    string message = 1;
+}
