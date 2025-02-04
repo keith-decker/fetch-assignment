@@ -23,9 +23,7 @@ func TestGetPoints(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	mux := http.NewServeMux()
-	mux.HandleFunc("/receipts/{id}/points", getPoints)
-
+	mux := buildRouter()
 	mux.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
@@ -46,9 +44,7 @@ func TestMissingReceipt(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	mux := http.NewServeMux()
-	mux.HandleFunc("/receipts/{id}/points", getPoints)
-
+	mux := buildRouter()
 	mux.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusNotFound {
@@ -59,5 +55,93 @@ func TestMissingReceipt(t *testing.T) {
 	expected := "No receipt found for that ID."
 	if !strings.Contains(body, expected) {
 		t.Errorf("expected body to contain %q, got %q", expected, body)
+	}
+}
+
+func TestProcessReceiptEmptyReceipt(t *testing.T) {
+	req, err := http.NewRequest("POST", "/receipts/process", nil)
+	if err != nil {
+		t.Fatalf("could not create request: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	mux := buildRouter()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400; got %d", rec.Code)
+	}
+
+	body := rec.Body.String()
+	expected := "The receipt is invalid."
+	if !strings.Contains(body, expected) {
+		t.Errorf("expected body to contain %q, got %q", expected, body)
+	}
+}
+
+func TestProcessReceiptInvalidReceipt(t *testing.T) {
+	invalidReceipt := `{"invalid": "data"}`
+	req, err := http.NewRequest("POST", "/receipts/process", strings.NewReader(invalidReceipt))
+	if err != nil {
+		t.Fatalf("could not create request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	rec := httptest.NewRecorder()
+	mux := buildRouter()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400; got %d", rec.Code)
+	}
+
+	body := rec.Body.String()
+	expected := "The receipt is invalid."
+	if !strings.Contains(body, expected) {
+		t.Errorf("expected body to contain %q, got %q", expected, body)
+	}
+}
+
+func TestProcessReceipt(t *testing.T) {
+	receipt := `{
+  "retailer": "M&M Corner Market",
+  "purchaseDate": "2022-03-20",
+  "purchaseTime": "14:33",
+  "items": [
+    {
+      "shortDescription": "Gatorade",
+      "price": "2.25"
+    },{
+      "shortDescription": "Gatorade",
+      "price": "2.25"
+    },{
+      "shortDescription": "Gatorade",
+      "price": "2.25"
+    },{
+      "shortDescription": "Gatorade",
+      "price": "2.25"
+    }
+  ],
+  "total": "9.00"
+}`
+	req, err := http.NewRequest("POST", "/receipts/process", strings.NewReader(receipt))
+	if err != nil {
+		t.Fatalf("could not create request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	rec := httptest.NewRecorder()
+	mux := buildRouter()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected status 200; got %d", rec.Code)
+	}
+
+	body := rec.Body.String()
+	if !strings.Contains(body, "id") {
+		t.Errorf("expected body to contain an ID, got %q", body)
 	}
 }

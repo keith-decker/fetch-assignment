@@ -42,6 +42,15 @@ func getPoints(w http.ResponseWriter, r *http.Request) {
 
 func processReceipt(w http.ResponseWriter, r *http.Request) {
 	// Process the receipt
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+
+	if r.Body == nil {
+		http.Error(w, "The receipt is invalid.", http.StatusBadRequest)
+		return
+	}
+
 	defer r.Body.Close()
 
 	// get the bytes from the request
