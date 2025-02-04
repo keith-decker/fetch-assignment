@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -90,12 +91,14 @@ func processReceipt(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// Replace this with GorillaMux, or Chi, or another router
-	mux := buildRouter()
+	port := flag.String("port", "8080", "Port to run the server on")
+	flag.Parse()
 
-	log.Print("starting server on :8080")
-	err := http.ListenAndServe(":8080", mux)
-	log.Fatal(err)
+	mux := buildRouter()
+	fmt.Printf("Starting server on port %s\n", *port)
+	if err := http.ListenAndServe(fmt.Sprintf(":%s", *port), mux); err != nil {
+		fmt.Printf("Error starting server: %v\n", err)
+	}
 }
 
 func buildRouter() http.Handler {
