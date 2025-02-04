@@ -190,10 +190,3 @@ func defaultRules() []pointRuleInterface {
 	// return []pointRuleInterface{rule1}
 	return []pointRuleInterface{rule1, rule2, rule3, rule4, rule5, rule6, rule7}
 }
-
-func calculateDiscount(price float64) float64 {
-	if price > 100 {
-		return price * 0.1
-	}
-	return 0
-}
