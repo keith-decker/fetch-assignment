@@ -51,4 +51,4 @@ go test ./...
 ```
 
 ## License
-MIT. Though you probably don't really want to use this elsewhere. It needs some more work to be production ready.
+MIT. 
