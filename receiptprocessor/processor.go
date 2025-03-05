@@ -58,15 +58,15 @@ func ValidateReceipt(receipt *pb.Receipt) bool {
 	if !matched {
 		errors = append(errors, fmt.Sprintf("Retailer name is invalid: %v", receipt.Retailer))
 	}
-	// check purchase date against regex "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
-	matched, err = regexp.MatchString("^[0-9]{4}-[0-9]{2}-[0-9]{2}$", receipt.PurchaseDate)
+
+	// Convert the date into a date object (Ideally this is done in the proto)
+	layout := "2006-01-02"
+	_, err = time.Parse(layout, receipt.PurchaseDate)
 	if err != nil {
 		fmt.Printf("Error validating purchase date regex: %v\n", err)
 		errors = append(errors, fmt.Sprintf("Error validating purchase date %v", receipt.PurchaseDate))
 	}
-	if !matched {
-		errors = append(errors, fmt.Sprintf("Purchase date is invalid %v", receipt.PurchaseDate))
-	}
+
 	// check purchase time against regex "^[0-9]{2}:[0-9]{2}$"
 	matched, err = regexp.MatchString("^[0-9]{2}:[0-9]{2}$", receipt.PurchaseTime)
 	if err != nil {
